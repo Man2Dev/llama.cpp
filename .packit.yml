@@ -1,0 +1,34 @@
+upstream_project_url: https://src.fedoraproject.org/rpms/llama-cpp
+
+upstream_tag_template: b2901
+
+sources:
+  - path: llama-cpp-b2916.tar.gz
+    url: https://github.com/ggerganov/llama.cpp/archive/refs/tags/b2619.tar.gz
+
+jobs:
+  - job: pull_from_upstream
+    trigger: release
+    dist_git_branches:
+      - rawhide
+      - master
+    actions:
+      commit-message:
+        - bash -c 'echo "Update to ${PACKIT_PROJECT_VERSION}"'
+        - bash -c '[ -z "$PACKIT_RESOLVED_BUGS" ] || echo ${PACKIT_RESOLVED_BUGS} | tr " " "\n" | sed "s/^/- Resolves /"'
+        - bash -c 'echo "- Upstream tag - ${PACKIT_UPSTREAM_TAG}"'
+        - bash -c 'echo "- Upstream commit - ${PACKIT_UPSTREAM_COMMIT}"'
+      changelog-entry:
+        - bash -c 'git log --no-merges --pretty="format:- %s (%an)" $(git describe --tags --abbrev=0 ${PACKIT_PROJECT_UPSTREAM_TAG}^)..${PACKIT_PROJECT_UPSTREAM_TAG} --'
+        - bash -c '[ -z "$PACKIT_RESOLVED_BUGS" ] || echo ${PACKIT_RESOLVED_BUGS} | tr " " "\n" | sed "s/^/- Resolves /"'
+      # copy_upstream_release_description: true
+
+  - job: koji_build
+    trigger: commit
+    dist_git_branches:
+      - fedora-all
+
+  - job: bodhi_update
+    trigger: commit
+    dist_git_branches:
+      - fedora-branched
